@@ -15,7 +15,7 @@
         <surefire-report-plugin-version>2.4.3</surefire-report-plugin-version>
         <jxr-plugin-version>2.1</jxr-plugin-version>
         <project-info-reports-plugin-version>2.1.2</project-info-reports-plugin-version>
-        <maven-dsldoc-plugin-version>1.2</maven-dsldoc-plugin-version>
+        <maven-dsldoc-plugin-version>1.3</maven-dsldoc-plugin-version>
 
         <!-- Default Bundle Properties -->
         <osgi.export.pkg>*</osgi.export.pkg>
@@ -81,7 +81,7 @@
         <mdht-version>0.7.0.201012100720</mdht-version>
         <metabuilder-version>1.1.6</metabuilder-version>
         <mina-version>1.1.7</mina-version>
-        <oht-atna-version>1.2.0-v20110214</oht-atna-version>
+        <oht-atna-version>1.2.0-v20110609</oht-atna-version>
         <oht-cdar-version>1.1.0</oht-cdar-version>
         <osgi-api-version>1.2.0</osgi-api-version>
         <quartz-version>1.6.1</quartz-version>
@@ -997,11 +997,11 @@
                 <artifactId>maven-dsldoc-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>gdsl</id>
+                        <id>dsldoc</id>
                         <phase>compile</phase>
                         <goals>
-                            <goal>gdsl</goal>
-                            <goal>dslindex</goal>
+                            <goal>dsld</goal>
+                            <goal>dsldoc</goal>
                         </goals>
                     </execution>
                 </executions>

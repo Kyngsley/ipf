@@ -15,14 +15,15 @@
  */
 package org.openehealth.ipf.platform.camel.event.extend;
 
-import org.apache.camel.model.ProcessorDefinition;
 
+import groovy.lang.Closure;
+import org.apache.camel.model.ProcessorDefinition;
 import org.openehealth.ipf.platform.camel.event.model.PublishProcessorDefinition;
 
 /**
  * Extension that defines the DSL elements related to the IPF event infrastructure.
  *
- * @dsl
+ * @DSL
  * 
  * @author Martin Krasser
  * @author Jens Riemschneider
@@ -30,7 +31,7 @@ import org.openehealth.ipf.platform.camel.event.model.PublishProcessorDefinition
 public class EventExtension {
      /**
       * Publishes an event object
-      * @ipfdoc http://repo.openehealth.org/confluence/display/ipf2/Event+infrastructure#Eventinfrastructure-DSLextensions
+      * @DSLDoc http://repo.openehealth.org/confluence/display/ipf2/Event+infrastructure#Eventinfrastructure-DSLextensions
       */
     public static PublishProcessorDefinition publish(ProcessorDefinition self, Closure publishingLogic) {
         PublishProcessorDefinition answer = new PublishProcessorDefinition();
