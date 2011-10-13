@@ -32,6 +32,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
+import static org.openehealth.ipf.commons.ihe.ws.cxf.payload.StringPayloadHolder.PayloadType.SOAP_BODY;
+
 /**
  * CXF interceptor which inserts XML namespace declarations from incoming 
  * SOAP Envelope and SOAP Body elements into the String payload.
@@ -49,10 +51,13 @@ public class InNamespaceMergeInterceptor extends AbstractPhaseInterceptor<Messag
 
     @Override
     public void handleMessage(Message message) throws Fault {
-        String payload = message.getContent(String.class);
-        if (isXmlContent(payload)) {
-            Document document = (Document) message.getContent(Node.class);
-            message.setContent(String.class, enrichNamespaces(document, payload));
+        StringPayloadHolder payloadHolder = message.getContent(StringPayloadHolder.class);
+        if (payloadHolder != null) {
+            String payload = payloadHolder.get(SOAP_BODY);
+            if (isXmlContent(payload)) {
+                Document document = (Document) message.getContent(Node.class);
+                payloadHolder.put(SOAP_BODY, enrichNamespaces(document, payload));
+            }
         }
     }
 
@@ -128,7 +133,7 @@ public class InNamespaceMergeInterceptor extends AbstractPhaseInterceptor<Messag
 
             // insert remained definitions (if any)
             if (!namespaces.isEmpty()) {
-                StringBuffer sb = new StringBuffer(startTag);
+                StringBuilder sb = new StringBuilder(startTag);
                 for (String prefix : namespaces.keySet()) {
                     sb.append(" xmlns:").append(prefix).append("=\"")
                       .append(namespaces.get(prefix)).append('"');

@@ -3,12 +3,12 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.openehealth.ipf.tutorials</groupId>
-    <artifactId>tutorials-osgi-ihe-route-xds</artifactId>
-    <name>tutorials-osgi-ihe-route-xds</name>
+    <artifactId>ipf-tutorials-osgi-ihe-route-xds</artifactId>
+    <name>ipf-tutorials-osgi-ihe-route-xds</name>
 
     <parent>
         <groupId>org.openehealth.ipf.tutorials</groupId>
-        <artifactId>tutorials-osgi-ihe</artifactId>
+        <artifactId>ipf-tutorials-osgi-ihe</artifactId>
         <version>2.3-SNAPSHOT</version>
     </parent>
 
@@ -20,9 +20,9 @@
         </osgi.export.pkg>
         <osgi.import.pkg>
             org.openehealth.ipf.platform.camel.core.util,
+            org.openehealth.ipf.platform.camel.ihe.xds,
             org.openehealth.ipf.commons.ihe.xds.core.requests,
             org.openehealth.ipf.commons.ihe.xds.core.responses,
-            org.openehealth.ipf.platform.camel.ihe.xds.iti17.servlet,
             javax.servlet,
             org.apache.commons.io,
             *
@@ -32,7 +32,7 @@
     <dependencies>
         <dependency>
             <groupId>org.openehealth.ipf.platform-camel</groupId>
-            <artifactId>platform-camel-ihe-xds</artifactId>
+            <artifactId>ipf-platform-camel-ihe-xds</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

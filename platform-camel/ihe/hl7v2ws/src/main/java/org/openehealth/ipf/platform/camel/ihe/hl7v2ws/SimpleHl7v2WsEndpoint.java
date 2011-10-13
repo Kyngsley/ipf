@@ -18,19 +18,16 @@ package org.openehealth.ipf.platform.camel.ihe.hl7v2ws;
 import org.apache.camel.Consumer;
 import org.apache.camel.Processor;
 import org.apache.camel.Producer;
-import org.apache.commons.lang.Validate;
 import org.apache.cxf.endpoint.Server;
 import org.apache.cxf.frontend.ServerFactoryBean;
 import org.apache.cxf.interceptor.InterceptorProvider;
-import org.openehealth.ipf.commons.ihe.ws.ItiClientFactory;
-import org.openehealth.ipf.commons.ihe.ws.ItiServiceFactory;
-import org.openehealth.ipf.commons.ihe.ws.ItiServiceInfo;
+import org.openehealth.ipf.commons.ihe.ws.JaxWsClientFactory;
+import org.openehealth.ipf.commons.ihe.ws.JaxWsServiceFactory;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.Hl7v2ConfigurationHolder;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.intercept.producer.ProducerAdaptingInterceptor;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.intercept.producer.ProducerInputAcceptanceInterceptor;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.intercept.producer.ProducerMarshalInterceptor;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.intercept.producer.ProducerOutputAcceptanceInterceptor;
-import org.openehealth.ipf.platform.camel.ihe.ws.AbstractWsComponent;
 import org.openehealth.ipf.platform.camel.ihe.ws.DefaultItiConsumer;
 import org.openehealth.ipf.platform.camel.ihe.ws.DefaultItiEndpoint;
 import org.openehealth.ipf.platform.camel.ihe.ws.DefaultItiWebService;
@@ -38,9 +35,7 @@ import org.openehealth.ipf.platform.camel.ihe.ws.DefaultItiWebService;
 /**
  * Camel endpoint for HL7v2-WS transaction with a single operation.
  */
-public class SimpleHl7v2WsEndpoint extends DefaultItiEndpoint<ItiServiceInfo> {
-
-    private final Class<? extends AbstractHl7v2WebService> serviceClass;
+public class SimpleHl7v2WsEndpoint extends DefaultItiEndpoint<AbstractHl7v2WsComponent> {
 
     /**
      * Constructs the endpoint.
@@ -52,19 +47,14 @@ public class SimpleHl7v2WsEndpoint extends DefaultItiEndpoint<ItiServiceInfo> {
      *          the component creating this endpoint.
      * @param customInterceptors
      *          user-defined CXF interceptors.
-     * @param serviceClass
-     *          service class.
      */
     public SimpleHl7v2WsEndpoint(
             String endpointUri,
             String address,
-            AbstractWsComponent component,
-            InterceptorProvider customInterceptors,
-            Class<? extends AbstractHl7v2WebService> serviceClass)
+            AbstractHl7v2WsComponent component,
+            InterceptorProvider customInterceptors)
     {
         super(endpointUri, address, component, customInterceptors);
-        Validate.notNull(serviceClass);
-        this.serviceClass = serviceClass;
     }
 
 
@@ -82,26 +72,41 @@ public class SimpleHl7v2WsEndpoint extends DefaultItiEndpoint<ItiServiceInfo> {
 
     @Override
     public Producer createProducer() throws Exception {
-        ItiClientFactory clientFactory = new ItiClientFactory(
-                getWebServiceConfiguration(),
-                getServiceUrl(), 
-                getCustomInterceptors());
-        return wrapProducer((Hl7v2ConfigurationHolder) getComponent(),
-                new SimpleHl7v2WsProducer(this, clientFactory));
+        return wrapProducer(
+                getComponent(),
+                getComponent().getProducer(this, getJaxWsClientFactory()));
     }
+
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception {
-        ItiServiceFactory serviceFactory = new ItiServiceFactory(
-                getWebServiceConfiguration(),
-                getServiceAddress(),
-                getCustomInterceptors());
-
-        AbstractHl7v2WebService serviceInstance = serviceClass.newInstance();
-        serviceInstance.setHl7v2Configuration((Hl7v2ConfigurationHolder) getComponent());
-        ServerFactoryBean serverFactory = serviceFactory.createServerFactory(serviceInstance);
+        AbstractHl7v2WebService serviceInstance =
+                (AbstractHl7v2WebService) getComponent().getServiceInstance(this);
+        serviceInstance.setHl7v2Configuration(getComponent());
+        ServerFactoryBean serverFactory = getJaxWsServiceFactory().createServerFactory(serviceInstance);
         Server server = serverFactory.create();
         DefaultItiWebService service = (DefaultItiWebService) serverFactory.getServiceBean();
         return new DefaultItiConsumer(this, processor, service, server);
+    }
+
+
+    @Override
+    public JaxWsClientFactory getJaxWsClientFactory() {
+        return new JaxWsClientFactory(
+                getComponent().getWsTransactionConfiguration(),
+                getServiceUrl(),
+                null,
+                getCustomInterceptors());
+    }
+
+
+    @Override
+    public JaxWsServiceFactory getJaxWsServiceFactory() {
+        return new JaxWsServiceFactory(
+                getComponent().getWsTransactionConfiguration(),
+                getServiceAddress(),
+                null,
+                getCustomInterceptors(),
+                getRejectionHandlingStrategy());
     }
 }

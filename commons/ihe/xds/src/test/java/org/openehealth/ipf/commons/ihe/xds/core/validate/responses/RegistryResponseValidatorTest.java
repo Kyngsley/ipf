@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
+import org.openehealth.ipf.commons.ihe.core.IpfInteractionId;
 import org.openehealth.ipf.commons.ihe.xds.core.SampleData;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLFactory;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLRegistryResponse;
@@ -28,12 +29,9 @@ import org.openehealth.ipf.commons.ihe.xds.core.responses.Response;
 import org.openehealth.ipf.commons.ihe.xds.core.responses.Severity;
 import org.openehealth.ipf.commons.ihe.xds.core.stub.ebrs30.rs.RegistryResponseType;
 import org.openehealth.ipf.commons.ihe.xds.core.transform.responses.ResponseTransformer;
-import org.openehealth.ipf.commons.ihe.xds.core.validate.IheProfile;
-import org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage;
-import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage.*;
+import org.openehealth.ipf.commons.ihe.xds.core.validate.*;
 
-import org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationProfile;
-import org.openehealth.ipf.commons.ihe.xds.core.validate.XDSMetaDataException;
+import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage.*;
 
 /**
  * Tests for {@link RegistryResponseValidator}.
@@ -51,8 +49,7 @@ public class RegistryResponseValidatorTest {
         EbXMLFactory factory = new EbXMLFactory30();
         transformer = new ResponseTransformer(factory);
         response = SampleData.createResponse();
-        profile = new ValidationProfile();
-        profile.setIheProfile(IheProfile.XDS_B);
+        profile = new ValidationProfile(IpfInteractionId.ITI_18);
     }
 
     @Test
@@ -67,14 +64,8 @@ public class RegistryResponseValidatorTest {
     }
     
     @Test
-    public void testInvalidErrorInfo() {
-        response.getErrors().add(null);
-        expectFailure(INVALID_ERROR_INFO_IN_RESPONSE);
-    }
-    
-    @Test
     public void testInvalidErrorCode() {
-        response.getErrors().add(new ErrorInfo(null, null, Severity.ERROR, null));
+        response.getErrors().add(new ErrorInfo(null, null, Severity.ERROR, null, null));
         expectFailure(INVALID_ERROR_CODE_IN_RESPONSE);
     }    
 

@@ -15,7 +15,7 @@
  */
 package org.openehealth.ipf.commons.ihe.xds.core.validate.responses;
 
-import static org.apache.commons.lang.Validate.notNull;
+import static org.apache.commons.lang3.Validate.notNull;
 import org.openehealth.ipf.commons.core.modules.api.Validator;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.*;
 import org.openehealth.ipf.commons.ihe.xds.core.metadata.ObjectReference;
@@ -40,11 +40,8 @@ public class QueryResponseValidator implements Validator<EbXMLQueryResponse, Val
     public void validate(EbXMLQueryResponse response, ValidationProfile profile) {
         notNull(response, "response cannot be null");
         
-        ValidationProfile queryProfile = new ValidationProfile(profile);
-        queryProfile.setQuery(true);
-        
-        regResponseValidator.validate(response, queryProfile);        
-        objectContainerValidator.validate(response, queryProfile);       
+        regResponseValidator.validate(response, profile);
+        objectContainerValidator.validate(response, profile);
 
         List<ObjectReference> references = response.getReferences();
         for (ObjectReference objRef : references) {
@@ -59,7 +56,7 @@ public class QueryResponseValidator implements Validator<EbXMLQueryResponse, Val
                 container.getRegistryPackages(SUBMISSION_SET_CLASS_NODE));
 
         patientId = checkForMultiplePatientIds(patientId, DOC_ENTRY_PATIENT_ID_EXTERNAL_ID,
-                container.getExtrinsicObjects(DOC_ENTRY_CLASS_NODE));
+                container.getExtrinsicObjects(STABLE_DOC_ENTRY));
 
         checkForMultiplePatientIds(patientId, FOLDER_PATIENT_ID_EXTERNAL_ID,
                 container.getRegistryPackages(FOLDER_CLASS_NODE));

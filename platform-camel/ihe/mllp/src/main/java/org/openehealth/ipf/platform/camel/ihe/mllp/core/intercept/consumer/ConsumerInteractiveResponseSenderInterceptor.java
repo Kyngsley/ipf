@@ -20,7 +20,7 @@ import ca.uhn.hl7v2.parser.Parser;
 import ca.uhn.hl7v2.util.Terser;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openehealth.ipf.modules.hl7.message.MessageUtils;
@@ -60,8 +60,8 @@ public class ConsumerInteractiveResponseSenderInterceptor extends AbstractMllpIn
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        Parser parser = getTransactionConfiguration().getParser();
-        MessageAdapter request = (MessageAdapter) exchange.getIn().getHeader(ORIGINAL_MESSAGE_ADAPTER_HEADER_NAME);
+        Parser parser = getHl7v2TransactionConfiguration().getParser();
+        MessageAdapter<?> request = (MessageAdapter<?>) exchange.getIn().getHeader(ORIGINAL_MESSAGE_ADAPTER_HEADER_NAME);
         Message requestMessage = request.getHapiMessage();
         Terser requestTerser = new Terser(requestMessage);
         String requestMessageType = requestTerser.get("MSH-9-1");
@@ -87,7 +87,7 @@ public class ConsumerInteractiveResponseSenderInterceptor extends AbstractMllpIn
         }
 
         // check whether responses to messages of this type can even be splitted
-        if (! getTransactionConfiguration().isContinuable(requestMessageType)) {
+        if (! getHl7v2TransactionConfiguration().isContinuable(requestMessageType)) {
             getWrappedProcessor().process(exchange);
             return;
         }
@@ -150,7 +150,7 @@ public class ConsumerInteractiveResponseSenderInterceptor extends AbstractMllpIn
         } else {
             // no fragment found --> run the route and create fragments if necessary
             getWrappedProcessor().process(exchange);
-            MessageAdapter response = Exchanges.resultMessage(exchange).getBody(MessageAdapter.class);
+            MessageAdapter<?> response = Exchanges.resultMessage(exchange).getBody(MessageAdapter.class);
             responseMessage = considerFragmentingResponse(response, threshold, queryTag, chainId);
         }
         Exchanges.resultMessage(exchange).setBody(parser.encode(responseMessage));
@@ -166,7 +166,7 @@ public class ConsumerInteractiveResponseSenderInterceptor extends AbstractMllpIn
      * If no -- simply returns the response message back.
      */
     private Message considerFragmentingResponse(
-            MessageAdapter response, 
+            MessageAdapter<?> response, 
             int threshold,
             String queryTag,
             String chainId) throws Exception
@@ -195,7 +195,7 @@ public class ConsumerInteractiveResponseSenderInterceptor extends AbstractMllpIn
         final int fragmentsCount = (recordBoundaries.size() + threshold - 2) / threshold; 
         
         // create a new chain of fragments
-        Parser parser = getTransactionConfiguration().getParser();
+        Parser parser = getHl7v2TransactionConfiguration().getParser();
         String continuationPointer = null;
         for (int currentFragmentIndex = 0; currentFragmentIndex < fragmentsCount; ++currentFragmentIndex) {
             // create the current fragment as String 
@@ -243,7 +243,7 @@ public class ConsumerInteractiveResponseSenderInterceptor extends AbstractMllpIn
      * For N data records there will be N+1 boundaries.
      */
     private List<Integer> getRecordBoundaries(List<String> segments) {
-        Hl7v2TransactionConfiguration config = getTransactionConfiguration();
+        Hl7v2TransactionConfiguration config = getHl7v2TransactionConfiguration();
         List<Integer> recordBoundaries = new ArrayList<Integer>(); 
         boolean foundFooter = false;
         for (int i = 1; i < segments.size(); ++i) {

@@ -19,6 +19,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.cxf.binding.soap.Soap11;
 import org.apache.cxf.binding.soap.Soap12;
+import org.apache.cxf.message.Exchange;
+import org.apache.cxf.message.Message;
 import org.apache.cxf.ws.addressing.Names;
 import org.apache.cxf.ws.addressing.VersionTransformer.Names200403;
 import org.apache.cxf.ws.addressing.VersionTransformer.Names200408;
@@ -27,6 +29,7 @@ import org.w3c.dom.Node;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -161,7 +164,7 @@ public abstract class SoapUtils {
 
         return element;
     }
-    
+
 
     /**
      * Extracts the proper body (for example, a Query) from the
@@ -217,15 +220,80 @@ public abstract class SoapUtils {
 
 
     /**
-     * Returns local name of the root element of the XML document represented
-     * by the given string, or <code>null</code>, when the given string does
-     * not contain valid XML.
+     * Extracts the given XML element from the given XML document.
+     * <p>
+     * Notes:
+     * <ul>
+     *     <li>Only non-empty elements can be found, the form
+     *          <tt>&lt;prefix:elementName (attr="value")* /&gt;</tt> is not supported.</li>
+     *     <li>When multiple elements with the given local name are present,
+     *          the last one will be returned.</li>
+     * </ul>
+     *
+     * @param document
+     *      XML document as String.
+     * @param elementName
+     *      XML local element name.
+     * @return
+     *      XML element as String, or <code>null</code> when no element could be extracted.
      */
-    public static String getRootElementLocalName(String xml) {
-        if (xml == null) {
+    public static String extractNonEmptyElement(String document, String elementName) {
+
+        // ... <prefix:elementName attr1="abcd"> ... </prefix:elementName> ...
+        //     3                                     2        1
+
+        try {
+            int pos1 = document.lastIndexOf(elementName + '>');
+            if (pos1 < 0) {
+                LOG.warn("Cannot find end of the closing tag of " + elementName);
+                return null;
+            }
+
+            int pos2 = document.lastIndexOf('<', pos1 - 1);
+            if (pos2 < 0) {
+                LOG.warn("Cannot find start of the closing tag of " + elementName);
+                return null;
+            }
+
+            StringBuilder sb = new StringBuilder().append('<');
+            if (pos1 - pos2 > 2) {
+                sb.append(document, pos2 + 2, pos1 - 1).append(':');
+            }
+            int pos3 = document.indexOf(sb.append(elementName).toString());
+            if (pos3 < 0) {
+                LOG.warn("Cannot find start of the opening tag of " + elementName);
+                return null;
+            }
+
+            return document.substring(pos3, pos1 + elementName.length() + 1);
+
+        } catch (Exception e) {
+            LOG.error("Could not extract element" + elementName, e);
             return null;
         }
-        Matcher matcher = ROOT_ELEMENT_PATTERN.matcher(xml);
-        return (matcher.find() && (matcher.start() == 0)) ? matcher.group(1) : null;
     }
+
+
+    /**
+     * Returns Exception object from the outgoing fault message contained in the given
+     * CXF exchange, or <code>null</code>, when no exception could be extracted.
+     */
+    public static Exception extractOutgoingException(Exchange exchange) {
+        Message outFaultMessage = exchange.getOutFaultMessage();
+        return (outFaultMessage != null) ? outFaultMessage.getContent(Exception.class) : null;
+    }
+
+
+    /**
+     * Returns String payload of the outgoing message contained in the given
+     * CXF exchange, or <code>null</code>, when no String payload could be extracted.
+     */
+    public static String extractOutgoingPayload(Exchange exchange) {
+        try {
+            return (String) exchange.getOutMessage().getContent(List.class).get(0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 }

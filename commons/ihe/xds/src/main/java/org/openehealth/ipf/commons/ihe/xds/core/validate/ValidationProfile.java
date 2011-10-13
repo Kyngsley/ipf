@@ -15,95 +15,90 @@
  */
 package org.openehealth.ipf.commons.ihe.xds.core.validate;
 
+import org.openehealth.ipf.commons.ihe.core.InteractionId;
+import static org.openehealth.ipf.commons.ihe.core.IpfInteractionId.*;
+
 /**
- * Validation profile allowing the definition of actor specific validation
- * settings.
+ * Validation profile for XDS-like transactions.
  * @author Jens Riemschneider
+ * @author Dmytro Rud
  */
 public class ValidationProfile {
-    private boolean query;
-    private IheProfile iheProfile;
-    private Actor actor;
-    
-    /**
-     * Constructs a profile.
-     */
-    public ValidationProfile() {}
 
-
-    /**
-     * Constructs a profile.
-     * @param query
-     *          <code>true</code> if checks are done for query transactions.
-     * @param iheProfile
-     *          IHE profile which rules should be applied.
-     * @param actor
-     *          defines the actor that validates messages.
-     */
-    public ValidationProfile(boolean query, IheProfile iheProfile, Actor actor) {
-        this.query = query;
-        this.iheProfile = iheProfile;
-        this.actor = actor;
+    public static enum InteractionProfile {
+        XDS_A, XDS_B, XCA, Continua_HRN
     }
 
+    private InteractionId interactionId;
+
 
     /**
-     * Copy constructor.
-     * @param profile
-     *          profile to copy.
+     * Constructor.
+     * @param interactionId
+     *          ID of the eHealth transaction.
      */
-    public ValidationProfile(ValidationProfile profile) {
-        if (profile != null) {
-            query = profile.query;
-            iheProfile = profile.iheProfile;
-            actor = profile.actor;
-        }
+    public ValidationProfile(InteractionId interactionId) {
+        this.interactionId = interactionId;
     }
+
 
     /**
      * @return <code>true</code> if checks are done for query transactions.
      */
     public boolean isQuery() {
-        return query;
+        return ((interactionId == ITI_16) ||
+                (interactionId == ITI_18) ||
+                (interactionId == ITI_38));
     }
+
 
     /**
-     * @param query
-     *          <code>true</code> if checks are done for query transactions. 
+     * @return ID of the eHealth transaction.
      */
-    public void setQuery(boolean query) {
-        this.query = query;
+    public InteractionId getInteractionId() {
+        return interactionId;
     }
+
 
     /**
-     * @return IHE Profile which rules should be applied.
+     * @return ID of interaction profile the transaction belongs to.
      */
-    public IheProfile getIheProfile() {
-        return iheProfile;
+    public InteractionProfile getProfile() {
+        if (interactionId == Continua_HRN) {
+            return InteractionProfile.Continua_HRN;
+        }
+
+        if ((interactionId == ITI_14) ||
+            (interactionId == ITI_15) ||
+            (interactionId == ITI_16))
+        {
+            return InteractionProfile.XDS_A;
+        }
+
+        if ((interactionId == ITI_38) || (interactionId == ITI_39)) {
+            return InteractionProfile.XCA;
+        }
+
+        if ((interactionId == ITI_18) ||
+            (interactionId == ITI_41) ||
+            (interactionId == ITI_42) ||
+            (interactionId == ITI_43))
+        {
+            return InteractionProfile.XDS_B;
+        }
+
+        throw new IllegalArgumentException("Unknown interaction ID: " + interactionId);
     }
+
 
     /**
-     * @param iheProfile
-     *          IHE Profile which rules should be applied.
+     * @return <code>true</code> when the transaction uses ebXML 3.0.
      */
-    public void setIheProfile(IheProfile iheProfile) {
-        this.iheProfile = iheProfile;
+    public boolean isEbXml30Based() {
+        InteractionProfile profile = getProfile();
+        return ((profile == InteractionProfile.XDS_B) ||
+                (profile == InteractionProfile.XCA) ||
+                (profile == InteractionProfile.Continua_HRN));
     }
 
-    /**
-     * @return defines the actor that validates messages.
-     */
-    public Actor getActor() {
-        return actor;
-    }
-
-    /**
-     * @param actor
-     *          defines the actor that validates messages.
-     */
-    public void setActor(Actor actor) {
-        this.actor = actor;
-    }
-
-    public boolean isXdsb() {throw new RuntimeException(); };
 }

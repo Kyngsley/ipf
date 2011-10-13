@@ -17,41 +17,64 @@ package org.openehealth.ipf.commons.ihe.hl7v3;
 
 import org.apache.cxf.frontend.ServerFactoryBean;
 import org.apache.cxf.interceptor.InterceptorProvider;
-import org.openehealth.ipf.commons.ihe.ws.ItiServiceFactory;
+import org.openehealth.ipf.commons.ihe.ws.JaxWsServiceFactory;
+import org.openehealth.ipf.commons.ihe.ws.cxf.WsRejectionHandlingStrategy;
+import org.openehealth.ipf.commons.ihe.ws.cxf.audit.AuditInRequestInterceptor;
+import org.openehealth.ipf.commons.ihe.ws.cxf.audit.AuditResponseInterceptor;
+import org.openehealth.ipf.commons.ihe.ws.cxf.audit.WsAuditStrategy;
 import org.openehealth.ipf.commons.ihe.ws.cxf.databinding.plainxml.PlainXmlDataBinding;
 import org.openehealth.ipf.commons.ihe.ws.cxf.payload.InNamespaceMergeInterceptor;
 import org.openehealth.ipf.commons.ihe.ws.cxf.payload.InPayloadExtractorInterceptor;
 import org.openehealth.ipf.commons.ihe.ws.cxf.payload.InPayloadInjectorInterceptor;
+import static org.openehealth.ipf.commons.ihe.ws.cxf.payload.StringPayloadHolder.PayloadType.SOAP_BODY;
+
 
 /**
  * Factory for HL7 v3 Web Services.
  * @author Dmytro Rud
  */
-public class Hl7v3ServiceFactory extends ItiServiceFactory {
-    
+public class Hl7v3ServiceFactory extends JaxWsServiceFactory {
     /**
      * Constructs the factory.
-     * @param serviceInfo
+     * @param wsTransactionConfiguration
      *          the info about the service to produce.
      * @param serviceAddress
      *          the address of the service that it should be published with.
+     * @param auditStrategy
+     *          the auditing strategy to use.
      * @param customInterceptors
      *          user-defined custom CXF interceptors.
+     * @param rejectionHandlingStrategy
+     *          user-defined rejection handling strategy.
      */
     public Hl7v3ServiceFactory(
-            Hl7v3ServiceInfo serviceInfo,
+            Hl7v3WsTransactionConfiguration wsTransactionConfiguration,
             String serviceAddress,
-            InterceptorProvider customInterceptors) 
+            WsAuditStrategy auditStrategy,
+            InterceptorProvider customInterceptors,
+            WsRejectionHandlingStrategy rejectionHandlingStrategy)
     {
-        super(serviceInfo, serviceAddress, customInterceptors);
+        super(wsTransactionConfiguration, serviceAddress, auditStrategy,
+                customInterceptors, rejectionHandlingStrategy);
     }
     
     @Override
     protected void configureInterceptors(ServerFactoryBean svrFactory) {
         super.configureInterceptors(svrFactory);
-        svrFactory.getInInterceptors().add(new InPayloadExtractorInterceptor());
+        svrFactory.getInInterceptors().add(new InPayloadExtractorInterceptor(SOAP_BODY));
         svrFactory.getInInterceptors().add(new InNamespaceMergeInterceptor());
         svrFactory.getInInterceptors().add(new InPayloadInjectorInterceptor(0));
         svrFactory.setDataBinding(new PlainXmlDataBinding());
+
+        // install auditing-related interceptors if the user has not switched auditing off
+        if (auditStrategy != null) {
+            svrFactory.getInInterceptors().add(new AuditInRequestInterceptor(
+                    auditStrategy, getWsTransactionConfiguration()));
+
+            AuditResponseInterceptor auditInterceptor =
+                new AuditResponseInterceptor(auditStrategy, true, null, false);
+            svrFactory.getOutInterceptors().add(auditInterceptor);
+            svrFactory.getOutFaultInterceptors().add(auditInterceptor);
+        }
     }
 }

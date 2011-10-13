@@ -15,7 +15,7 @@
  */
 package org.openehealth.ipf.commons.ihe.xds.core.validate.requests;
 
-import static org.apache.commons.lang.Validate.notNull;
+import static org.apache.commons.lang3.Validate.notNull;
 import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage.*;
 import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidatorAssertions.metaDataAssert;
 
@@ -23,7 +23,6 @@ import org.openehealth.ipf.commons.core.modules.api.Validator;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLRetrieveDocumentSetRequest;
 import org.openehealth.ipf.commons.ihe.xds.core.requests.RetrieveDocument;
 import org.openehealth.ipf.commons.ihe.xds.core.validate.HomeCommunityIdValidator;
-import org.openehealth.ipf.commons.ihe.xds.core.validate.IheProfile;
 import org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationProfile;
 
 /**
@@ -44,7 +43,7 @@ public class RetrieveDocumentSetRequestValidator implements Validator<EbXMLRetri
             String docId = document.getDocumentUniqueId();
             metaDataAssert(docId != null && !docId.isEmpty(), DOC_ID_MUST_BE_SPECIFIED);
 
-            if (profile.getIheProfile() == IheProfile.XCA) {
+            if (profile.getProfile() == ValidationProfile.InteractionProfile.XCA) {
                 hcValidator.validate(document.getHomeCommunityId());
             }
         }

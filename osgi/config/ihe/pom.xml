@@ -2,22 +2,20 @@
     
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.openehealth.ipf.osgi</groupId>
-    <artifactId>osgi-config-ihe</artifactId>
-    <name>osgi-config-ihe</name>
+    <artifactId>ipf-osgi-config-ihe</artifactId>
+    <name>ipf-osgi-config-ihe</name>
     <packaging>pom</packaging>
     
     <parent>
         <groupId>org.openehealth.ipf.osgi</groupId>
-        <artifactId>osgi-config</artifactId>
+        <artifactId>ipf-osgi-config</artifactId>
         <version>2.3-SNAPSHOT</version>
     </parent>
     
     <modules>
         <module>atna</module>
-        <module>pixpdq</module>
-        <module>pixpdqv3</module>
-        <module>xcpd</module>
-		<module>xca</module>
+        <module>hl7v2</module>
+        <module>hl7v3</module>
         <module>xds</module>
     </modules>
     

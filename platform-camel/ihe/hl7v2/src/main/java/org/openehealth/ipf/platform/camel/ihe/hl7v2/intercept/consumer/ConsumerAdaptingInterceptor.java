@@ -18,7 +18,7 @@ package org.openehealth.ipf.platform.camel.ihe.hl7v2.intercept.consumer;
 import ca.uhn.hl7v2.model.Message;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openehealth.ipf.modules.hl7.AckTypeCode;
@@ -94,7 +94,7 @@ public class ConsumerAdaptingInterceptor extends AbstractHl7v2Interceptor {
      */
     @Override
     public void process(Exchange exchange) throws Exception {
-        MessageAdapter originalAdapter = exchange.getIn().getHeader(ORIGINAL_MESSAGE_ADAPTER_HEADER_NAME, MessageAdapter.class); 
+        MessageAdapter<?> originalAdapter = exchange.getIn().getHeader(ORIGINAL_MESSAGE_ADAPTER_HEADER_NAME, MessageAdapter.class); 
         Message originalMessage = originalAdapter.getHapiMessage();
 
         // run the route
@@ -113,10 +113,10 @@ public class ConsumerAdaptingInterceptor extends AbstractHl7v2Interceptor {
         if (charsetName != null) {
             exchange.setProperty(Exchange.CHARSET_NAME, charsetName);
         }
-        MessageAdapter msg = Hl7v2MarshalUtils.extractMessageAdapter(
+        MessageAdapter<?> msg = Hl7v2MarshalUtils.extractMessageAdapter(
                 m,
                 characterSet(exchange),
-                getTransactionConfiguration().getParser());
+                getHl7v2TransactionConfiguration().getParser());
         
         // additionally: an Exception in the body?
         if((msg == null) && (body instanceof Throwable)) {
@@ -144,6 +144,7 @@ public class ConsumerAdaptingInterceptor extends AbstractHl7v2Interceptor {
      * Considers a specific header to determine whether the route author want us to generate
      * an automatic acknowledgment, and generates the latter when the author really does.   
      */
+    @SuppressWarnings("rawtypes")
     private MessageAdapter analyseMagicHeader(org.apache.camel.Message m, Message originalMessage) {
         Object header = m.getHeader(ACK_TYPE_CODE_HEADER, AckTypeCode.class);
         if (header == null) {
@@ -158,7 +159,7 @@ public class ConsumerAdaptingInterceptor extends AbstractHl7v2Interceptor {
         } else {
             HL7v2Exception exception = new HL7v2Exception(
                     "HL7v2 processing failed",
-                    getTransactionConfiguration().getResponseErrorDefaultErrorCode());
+                    getHl7v2TransactionConfiguration().getResponseErrorDefaultErrorCode());
             ack = getNakFactory().createNak(
                     originalMessage,
                     exception, 

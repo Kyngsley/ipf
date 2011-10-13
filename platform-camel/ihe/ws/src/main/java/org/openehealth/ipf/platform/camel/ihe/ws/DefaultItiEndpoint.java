@@ -17,22 +17,29 @@ package org.openehealth.ipf.platform.camel.ihe.ws;
 
 import javax.xml.namespace.QName;
 
+import org.apache.camel.Consumer;
+import org.apache.camel.Processor;
+import org.apache.camel.Producer;
 import org.apache.camel.impl.DefaultEndpoint;
-import org.apache.camel.spi.ManagementAware;
+import org.apache.cxf.endpoint.Server;
+import org.apache.cxf.frontend.ServerFactoryBean;
 import org.apache.cxf.headers.Header;
 import org.apache.cxf.interceptor.InterceptorProvider;
-import org.openehealth.ipf.commons.ihe.ws.ItiServiceInfo;
+import org.openehealth.ipf.commons.ihe.ws.JaxWsClientFactory;
+import org.openehealth.ipf.commons.ihe.ws.JaxWsServiceFactory;
 import org.openehealth.ipf.commons.ihe.ws.correlation.AsynchronyCorrelator;
-import org.openehealth.ipf.platform.camel.ihe.ws.mbean.ManagedWsItiEndpoint;
+import org.openehealth.ipf.commons.ihe.ws.cxf.WsRejectionHandlingStrategy;
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
 
 /**
  * Camel endpoint used to create producers and consumers based on webservice calls.
  * @author Jens Riemschneider
  * @author Dmytro Rud
  */
-@SuppressWarnings("deprecation")
-public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends DefaultEndpoint
-    implements ManagementAware<DefaultItiEndpoint<C>> {
+@ManagedResource(description = "Managed IPF WS ITI Endpoint")
+public abstract class DefaultItiEndpoint<ComponentType extends AbstractWsComponent<?>>
+    extends DefaultEndpoint {
 
     private static final String ENDPOINT_PROTOCOL = "http://";
     private static final String ENDPOINT_PROTOCOL_SECURE = "https://";
@@ -83,6 +90,7 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
     private AsynchronyCorrelator correlator = null;
     private InterceptorProvider customInterceptors = null;
     private String homeCommunityId = null;
+    private WsRejectionHandlingStrategy rejectionHandlingStrategy = null;
 
     /**
      * Constructs the endpoint.
@@ -98,7 +106,7 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
     protected DefaultItiEndpoint(
             String endpointUri, 
             String address, 
-            AbstractWsComponent<C> component,
+            ComponentType component,
             InterceptorProvider customInterceptors) 
     {
         super(endpointUri, component);
@@ -107,25 +115,13 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
         configure();
     }
 
-    /**
-     * @return Web Service parameters of the component to
-     *      which this endpoint belongs.
-     */
-    @SuppressWarnings("unchecked")
-    protected C getWebServiceConfiguration() {
-        return ((AbstractWsComponent<C>) getComponent()).getWebServiceConfiguration();
-    }
-    
-    public Object getManagedObject(DefaultItiEndpoint<C> endpoint) {
-        return new ManagedWsItiEndpoint(endpoint, getWebServiceConfiguration());
-    }
-
     private void configure() {
         serviceUrl = (secure ? ENDPOINT_PROTOCOL_SECURE : ENDPOINT_PROTOCOL) + address;
         serviceAddress = "/" + address;
     }
 
     @Override
+    @ManagedAttribute
     public boolean isSingleton() {
         return true;
     }
@@ -148,6 +144,7 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
      * URI does not represent a consumer, this method throws an exception.
      * @return the service address.
      */
+    @ManagedAttribute(description = "Service Address")
     public String getServiceAddress() {
         return serviceAddress;
     }
@@ -155,10 +152,11 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
     /**
      * @return <code>true</code> if auditing is turned on. <code>true</code> by default.
      */
+    @ManagedAttribute(description = "Audit Enabled")
     public boolean isAudit() {
         return audit;
     }
-    
+
     /**
      * @param audit
      *          <code>true</code> if auditing is turned on.
@@ -180,6 +178,7 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
      * @return <code>true</code> if audit entries are logged even if not all 
      *          necessary data is available. Defaults to <code>false</code>.
      */
+    @ManagedAttribute(description = "Incomplete Audit Allowed")
     public boolean isAllowIncompleteAudit() {
         return allowIncompleteAudit;
     }
@@ -187,8 +186,8 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
     /**
      * @return <code>true</code> if https should be used instead of http. Defaults
      *          to <code>false</code>.
-     *          
      */
+    @ManagedAttribute(description = "Security Enabled")
     public boolean isSecure() {
         return secure;
     }
@@ -208,7 +207,7 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
     public void setCorrelator(AsynchronyCorrelator correlator) {
         this.correlator = correlator;
     }
-    
+
     /**
      * Returns the correlator.
      */
@@ -227,6 +226,7 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
      * @return
      *      homeCommunityId of this endpoint.
      */
+    @ManagedAttribute(description = "HomeCommunityId")
     public String getHomeCommunityId() {
         return homeCommunityId;
     }
@@ -239,4 +239,80 @@ public abstract class DefaultItiEndpoint<C extends ItiServiceInfo> extends Defau
     public void setHomeCommunityId(String homeCommunityId) {
         this.homeCommunityId = homeCommunityId;
     }
+
+    /**
+     * @return
+     *      rejection handling strategy, if any configured.
+     */
+    public WsRejectionHandlingStrategy getRejectionHandlingStrategy() {
+        return rejectionHandlingStrategy;
+    }
+
+    /**
+     * @param rejectionHandlingStrategy
+     *      a rejection handling strategy instance.
+     */
+    public void setRejectionHandlingStrategy(WsRejectionHandlingStrategy rejectionHandlingStrategy) {
+        this.rejectionHandlingStrategy = rejectionHandlingStrategy;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public ComponentType getComponent() {
+        return (ComponentType) super.getComponent();
+    }
+
+    /**
+     * @return JAX-WS client object factory.
+     */
+    public abstract JaxWsClientFactory getJaxWsClientFactory();
+
+    /**
+     * @return JAX-WS service object factory.
+     */
+    public abstract JaxWsServiceFactory getJaxWsServiceFactory();
+
+
+    @Override
+    public Producer createProducer() throws Exception {
+        return getComponent().getProducer(this, getJaxWsClientFactory());
+    }
+
+
+    @Override
+    public Consumer createConsumer(Processor processor) throws Exception {
+        DefaultItiWebService serviceInstance = getComponent().getServiceInstance(this);
+        ServerFactoryBean serverFactory = getJaxWsServiceFactory().createServerFactory(serviceInstance);
+        Server server = serverFactory.create();
+        DefaultItiWebService service = (DefaultItiWebService) serverFactory.getServiceBean();
+        return new DefaultItiConsumer(this, processor, service, server);
+    }
+
+
+    //special managed attributes
+    /**
+     * @return <code>true</code> if WS-Addressing enabled.
+     */
+    @ManagedAttribute(description = "Addressing Enabled")
+    public boolean isAddressing() {
+        return getComponent().getWsTransactionConfiguration().isAddressing();
+    }
+
+    /**
+     * @return <code>true</code> if MTOM enabled.
+     */
+    @ManagedAttribute(description = "Mtom Enabled")
+    public boolean isMtom() {
+        return getComponent().getWsTransactionConfiguration().isMtom();
+    }
+
+    /**
+     * @return <code>true</code> if SOAP With Attachments Output enabled.
+     */
+    @ManagedAttribute(description = "SOAP With Attachments Output Enabled")
+    public boolean isSwaOutSupport() {
+        return getComponent().getWsTransactionConfiguration().isSwaOutSupport();
+    }
+
+
 }

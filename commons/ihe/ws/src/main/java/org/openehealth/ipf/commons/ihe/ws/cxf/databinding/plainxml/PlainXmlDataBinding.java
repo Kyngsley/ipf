@@ -32,13 +32,13 @@ public class PlainXmlDataBinding extends AbstractDataBinding {
     @SuppressWarnings("unchecked")
     @Override
     public <T> DataReader<T> createReader(Class<T> cls) {
-        return (DataReader<T>) new FakeReader();
+        return (DataReader<T>) new PlainXmlReader();
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <T> DataWriter<T> createWriter(Class<T> cls) {
-        return (DataWriter<T>) new XmlStringWriter();
+        return (DataWriter<T>) new PlainXmlWriter();
     }
 
     @Override

@@ -15,15 +15,14 @@
  */
 package org.openehealth.ipf.commons.ihe.xds.core.validate.responses;
 
-import static org.apache.commons.lang.Validate.notNull;
+import static org.apache.commons.lang3.Validate.notNull;
 import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage.*;
 import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidatorAssertions.metaDataAssert;
 
 import org.openehealth.ipf.commons.core.modules.api.Validator;
+import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLRegistryError;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLRegistryResponse;
-import org.openehealth.ipf.commons.ihe.xds.core.responses.ErrorInfo;
 import org.openehealth.ipf.commons.ihe.xds.core.validate.HomeCommunityIdValidator;
-import org.openehealth.ipf.commons.ihe.xds.core.validate.IheProfile;
 import org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationProfile;
 
 /**
@@ -38,13 +37,13 @@ public class RegistryResponseValidator implements Validator<EbXMLRegistryRespons
         notNull(response, "response cannot be null");
         
         metaDataAssert(response.getStatus() != null, INVALID_STATUS_IN_RESPONSE);
-        for (ErrorInfo errorInfo : response.getErrors()) {
-            metaDataAssert(errorInfo != null, INVALID_ERROR_INFO_IN_RESPONSE);
-            metaDataAssert(errorInfo.getErrorCode() != null, INVALID_ERROR_CODE_IN_RESPONSE);
-            metaDataAssert(errorInfo.getSeverity() != null, INVALID_SEVERITY_IN_RESPONSE);
+        for (EbXMLRegistryError registryError : response.getErrors()) {
+            metaDataAssert(registryError != null, INVALID_ERROR_INFO_IN_RESPONSE);
+            metaDataAssert(registryError.getErrorCode() != null, INVALID_ERROR_CODE_IN_RESPONSE);
+            metaDataAssert(registryError.getSeverity() != null, INVALID_SEVERITY_IN_RESPONSE);
 
-            if (profile.getIheProfile() == IheProfile.XCA) {
-                hcValidator.validate(errorInfo.getLocation());
+            if (profile.getProfile() == ValidationProfile.InteractionProfile.XCA) {
+                hcValidator.validate(registryError.getLocation());
             }
         }
     }

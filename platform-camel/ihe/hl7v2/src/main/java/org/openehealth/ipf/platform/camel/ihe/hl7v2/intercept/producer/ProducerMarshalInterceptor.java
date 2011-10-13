@@ -47,7 +47,7 @@ public class ProducerMarshalInterceptor extends AbstractProducerInterceptor {
         
         // marshal
         message = exchange.getIn();
-        MessageAdapter request = message.getBody(MessageAdapter.class);
+        MessageAdapter<?> request = message.getBody(MessageAdapter.class);
         message.setBody(request.toString());
 
         // run the route
@@ -56,6 +56,6 @@ public class ProducerMarshalInterceptor extends AbstractProducerInterceptor {
         // unmarshal
         message = Exchanges.resultMessage(exchange);
         String responseString = message.getBody(String.class);
-        message.setBody(MessageAdapters.make(getTransactionConfiguration().getParser(), responseString));
+        message.setBody(MessageAdapters.make(getHl7v2TransactionConfiguration().getParser(), responseString));
     }
 }

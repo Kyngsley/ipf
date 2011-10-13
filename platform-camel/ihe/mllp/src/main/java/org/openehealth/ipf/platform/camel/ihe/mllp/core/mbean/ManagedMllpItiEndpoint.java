@@ -20,6 +20,7 @@ import java.util.List;
 import org.apache.camel.component.mina.MinaConfiguration;
 import org.apache.camel.management.mbean.ManagedEndpoint;
 import org.apache.mina.common.IoFilter;
+import org.openehealth.ipf.platform.camel.ihe.mllp.core.MllpClientAuthType;
 import org.openehealth.ipf.platform.camel.ihe.mllp.core.MllpEndpoint;
 import org.openehealth.ipf.platform.camel.ihe.mllp.core.intercept.MllpCustomInterceptor;
 import org.springframework.jmx.export.annotation.ManagedAttribute;
@@ -126,18 +127,18 @@ public class ManagedMllpItiEndpoint extends ManagedEndpoint {
     public int getSegmentFragmentationThreshold() {
         return getEndpoint().getSegmentFragmentationThreshold();
     }
-    
-    @ManagedAttribute(description = "Mutual TLS required")
-    public boolean isMutualTLS() {
-        return getEndpoint().isMutualTLS();
+
+    @ManagedAttribute(description = "Client Authentication Type")
+    public MllpClientAuthType getClientAuthType() {
+        return getEndpoint().getClientAuthType();
     }
-    
+
     @ManagedAttribute(description = "SSL Secure Enabled")
     public boolean isSslSecure() {
         return getEndpoint().getSslContext() != null;
     }
     
-    @ManagedAttribute(description = "Defined SSL Protocoles")
+    @ManagedAttribute(description = "Defined SSL Protocols")
     public String[] getSslProtocols() {
         return getEndpoint().getSslProtocols();
     }

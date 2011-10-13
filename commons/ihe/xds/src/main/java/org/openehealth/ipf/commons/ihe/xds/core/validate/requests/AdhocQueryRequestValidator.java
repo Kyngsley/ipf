@@ -16,12 +16,13 @@
 package org.openehealth.ipf.commons.ihe.xds.core.validate.requests;
 
 import org.openehealth.ipf.commons.core.modules.api.Validator;
+import org.openehealth.ipf.commons.ihe.core.IpfInteractionId;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLAdhocQueryRequest;
 import org.openehealth.ipf.commons.ihe.xds.core.requests.query.QueryType;
 import org.openehealth.ipf.commons.ihe.xds.core.validate.*;
 import org.openehealth.ipf.commons.ihe.xds.core.validate.query.*;
 
-import static org.apache.commons.lang.Validate.notNull;
+import static org.apache.commons.lang3.Validate.notNull;
 import static org.openehealth.ipf.commons.ihe.xds.core.transform.requests.QueryParameter.*;
 import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage.*;
 import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidatorAssertions.metaDataAssert;
@@ -36,12 +37,11 @@ public class AdhocQueryRequestValidator implements Validator<EbXMLAdhocQueryRequ
 
     private static final CXValidator cxValidator = new CXValidator();
     private static final TimeValidator timeValidator = new TimeValidator();
-    // private static final OIDValidator oidValidator = new OIDValidator();
     private static final NopValidator nopValidator = new NopValidator();
 
 
     private QueryParameterValidation[] getValidators(QueryType queryType, ValidationProfile profile) {
-        boolean requireHomeCommunityId = (profile.getIheProfile() == IheProfile.XCA);
+        boolean requireHomeCommunityId = (profile.getProfile() == ValidationProfile.InteractionProfile.XCA);
 
         switch (queryType) {
             case FIND_DOCUMENTS:

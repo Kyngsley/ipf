@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
+import org.openehealth.ipf.commons.ihe.core.IpfInteractionId;
 import org.openehealth.ipf.commons.ihe.xds.core.SampleData;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLFactory;
 import org.openehealth.ipf.commons.ihe.xds.core.ebxml.EbXMLQueryResponse;
@@ -26,9 +27,9 @@ import org.openehealth.ipf.commons.ihe.xds.core.ebxml.ebxml21.EbXMLFactory21;
 import org.openehealth.ipf.commons.ihe.xds.core.metadata.*;
 import org.openehealth.ipf.commons.ihe.xds.core.responses.QueryResponse;
 import org.openehealth.ipf.commons.ihe.xds.core.transform.responses.QueryResponseTransformer;
-import org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage;
+import org.openehealth.ipf.commons.ihe.xds.core.validate.*;
+
 import static org.openehealth.ipf.commons.ihe.xds.core.validate.ValidationMessage.*;
-import org.openehealth.ipf.commons.ihe.xds.core.validate.XDSMetaDataException;
 
 /**
  * Test for {@link QueryResponseValidator}.
@@ -39,6 +40,7 @@ public class QueryResponseValidatorTest {
     private QueryResponse response;
     private QueryResponseTransformer transformer;
     private DocumentEntry docEntry;
+    private ValidationProfile profile = new ValidationProfile(IpfInteractionId.ITI_18);
 
     @Before
     public void setUp() {
@@ -53,13 +55,13 @@ public class QueryResponseValidatorTest {
     
     @Test
     public void testValidateGoodCase() {
-        validator.validate(transformer.toEbXML(response), null);
+        validator.validate(transformer.toEbXML(response), profile);
     }
 
     @Test
     public void testQueryResponseDoesNotHaveSubmissionSetLimitations() {
         response.getSubmissionSets().clear();
-        validator.validate(transformer.toEbXML(response), null);
+        validator.validate(transformer.toEbXML(response), profile);
     }
     
     @Test
@@ -112,7 +114,7 @@ public class QueryResponseValidatorTest {
 
     private void expectFailure(ValidationMessage expectedMessage, EbXMLQueryResponse ebXMLQueryResponse) {
         try {
-            validator.validate(ebXMLQueryResponse, null);
+            validator.validate(ebXMLQueryResponse, profile);
             fail("Expected exception: " + XDSMetaDataException.class);
         }
         catch (XDSMetaDataException e) {

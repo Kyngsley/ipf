@@ -15,25 +15,29 @@
  */
 package org.openehealth.ipf.platform.camel.ihe.hl7v2ws.pcd01;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.openehealth.ipf.modules.hl7dsl.MessageAdapters.load;
-
-import java.util.Set;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-
+import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
+import org.apache.camel.Processor;
+import org.apache.camel.impl.DefaultExchange;
 import org.apache.camel.util.CastUtils;
 import org.apache.cxf.transport.servlet.CXFServlet;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openehealth.ipf.modules.hl7dsl.MessageAdapters;
 import org.openehealth.ipf.platform.camel.core.util.Exchanges;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.Hl7v2AcceptanceException;
+import org.openehealth.ipf.platform.camel.ihe.hl7v2.intercept.AbstractHl7v2Interceptor;
 import org.openehealth.ipf.platform.camel.ihe.ws.StandardTestContainer;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import java.util.Set;
+
+import static org.junit.Assert.*;
+import static org.openehealth.ipf.modules.hl7dsl.MessageAdapters.load;
+
+
 /**
  * 
  * @author Mitko Kolev
@@ -53,12 +57,18 @@ public class Pcd01Test extends StandardTestContainer {
     public static void setUpClass() {
         startServer(new CXFServlet(), CONTEXT_DESCRIPTOR);
     }
-    
+
+    @Before
+    public void setUp() {
+        MyRejectionHandlingStrategy.resetCounter();
+    }
+
     @Test
     public void testHappyCase() throws Exception {
         String uri = "pcd-pcd01://localhost:" + getPort() + "/devicedata";
         String response = requestBody(uri, PCD_01_SPEC_REQUEST);
         assertResponseEquals(PCD_01_SPEC_RESPONSE, response);
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
     
     @Test
@@ -66,22 +76,38 @@ public class Pcd01Test extends StandardTestContainer {
         String uri = "pcd-pcd01://localhost:" + getPort() + "/route_inbound_validation";
         String response = requestBody(uri, PCD_01_SPEC_REQUEST);
         assertResponseEquals(PCD_01_SPEC_RESPONSE, response);
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
-    
     
     @Test
     public void testHappyCaseInboundAndOutboundValidation() throws Exception {
         String uri = "pcd-pcd01://localhost:" + getPort() + "/route_inbound_and_outbound_validation";
         String response = requestBody(uri, PCD_01_SPEC_REQUEST);
         assertResponseEquals(PCD_01_SPEC_RESPONSE, response);
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
 
     @Test(expected = Hl7v2AcceptanceException.class)
-    public void testInacceptableRequest() throws Exception {
+    public void testInacceptableRequestOnProducer() throws Exception {
         String uri = "pcd-pcd01://localhost:" + getPort() + "/devicedata";
         requestBody(uri, PCD_01_SPEC_REQUEST.replace("|2.6|", "|2.5|"));
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
-    
+
+    @Test
+    public void testInacceptableRequestOnConsumer() throws Exception {
+        String uri = "pcd-pcd01://localhost:" + getPort() + "/devicedata";
+        Endpoint endpoint = getCamelContext().getEndpoint(uri);
+        Processor processor = endpoint.createProducer();
+        while (processor instanceof AbstractHl7v2Interceptor) {
+            processor = ((AbstractHl7v2Interceptor) processor).getWrappedProcessor();
+        }
+        Exchange exchange = new DefaultExchange(getCamelContext());
+        exchange.getIn().setBody(PCD_01_SPEC_REQUEST.replace("|2.6|", "|2.5|"));
+        processor.process(exchange);
+        assertEquals(1, MyRejectionHandlingStrategy.getCount());
+    }
+
     @Test
     public void testApplicationError() throws Exception {
         String uri = "pcd-pcd01://localhost:" + getPort() + "/route_throws_exception";
@@ -89,6 +115,7 @@ public class Pcd01Test extends StandardTestContainer {
         assertTrue(response.startsWith("MSH|^~\\&|"));
         assertTrue("The response message must contain the cause", response.contains("java.lang.RuntimeException"));
         assertTrue("On application error the request message id must be returned.", response.contains("MSA|AE|MSGID1234"));
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
     
     @Test
@@ -97,6 +124,7 @@ public class Pcd01Test extends StandardTestContainer {
         String response = requestBody(uri, PCD_01_SPEC_REQUEST);
         assertTrue(response.startsWith("MSH|^~\\&|"));
         assertResponseEquals(PCD_01_SPEC_RESPONSE, response);
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
     
     @Test
@@ -108,9 +136,9 @@ public class Pcd01Test extends StandardTestContainer {
         assertTrue(response.startsWith("MSH|^~\\&|"));
         assertTrue(response.contains("MSA|AE"));
         assertTrue(response.contains("OBX-4"));
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
-    
-    
+
     @Test
     public void testInboundAndOutboundValidationError() throws Exception {
         String uri = "pcd-pcd01://localhost:" + getPort() + "/route_inbound_and_outbound_validation";
@@ -118,6 +146,7 @@ public class Pcd01Test extends StandardTestContainer {
         String response = requestBody(uri, PCD_01_SPEC_REQUEST);
         assertTrue(response.startsWith("MSH|^~\\&|"));
         assertResponseEquals(PCD_01_SPEC_RESPONSE, response);
+        assertEquals(0, MyRejectionHandlingStrategy.getCount());
     }
     
     @Test
@@ -129,14 +158,15 @@ public class Pcd01Test extends StandardTestContainer {
         assertTrue(response.contains("|ACK^R01^ACK|"));
         assertTrue(response.contains("MSA|AR|MSGID1234"));
         assertTrue(response.contains("ERR|||203^Unsupported version id^HL70357^^Invalid HL7 version 2.5|E|||Invalid HL7 version 2.5"));
+        assertEquals(1, MyRejectionHandlingStrategy.getCount());
     }
     
     @Test
-    public void jmxAttribute() throws Exception {
+    public void testJmxAttribute() throws Exception {
         MBeanServer mbsc = getCamelContext().getManagementStrategy().getManagementAgent()
             .getMBeanServer();
         Set<ObjectName> s = CastUtils.cast(mbsc.queryNames(new ObjectName(
-            "org.apache.camel:*,type=endpoints,name=\"pcd-pcd01://devicedata\""), null));
+                "org.apache.camel:*,type=endpoints,name=\"pcd-pcd01://devicedata\\?rejectionHandlingStrategy=%23rejectionHandlingStrategy\""), null));
         assertEquals(1, s.size());
         ObjectName object = (ObjectName) s.toArray()[0];
         assertNotNull(object);

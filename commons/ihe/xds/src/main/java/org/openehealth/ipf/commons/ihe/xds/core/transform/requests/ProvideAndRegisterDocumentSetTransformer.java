@@ -15,7 +15,7 @@
  */
 package org.openehealth.ipf.commons.ihe.xds.core.transform.requests;
 
-import static org.apache.commons.lang.Validate.notNull;
+import static org.apache.commons.lang3.Validate.notNull;
 
 import java.util.List;
 import java.util.Map;
@@ -120,7 +120,7 @@ public class ProvideAndRegisterDocumentSetTransformer {
         ProvideAndRegisterDocumentSet request = new ProvideAndRegisterDocumentSet();
         
         Map<String, DataHandler> documents = ebXML.getDocuments();
-        for (EbXMLExtrinsicObject extrinsic : ebXML.getExtrinsicObjects(Vocabulary.DOC_ENTRY_CLASS_NODE)) {
+        for (EbXMLExtrinsicObject extrinsic : ebXML.getExtrinsicObjects(Vocabulary.STABLE_DOC_ENTRY)) {
             DocumentEntry docEntry = documentEntryTransformer.fromEbXML(extrinsic);
             if (docEntry != null) {
                 Document document = new Document();

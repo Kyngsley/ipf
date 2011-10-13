@@ -35,12 +35,16 @@ public interface CDAR2Constants {
     static final String CDA_PHMR_SCHEMATRON_RULES = "schematron/cda_phmr/PHMR.sch";
 
     static final String HITSP_24_SCHEMATRON_RULES = "schematron/hitspc32_v2.4_20090414/HITSP_C32.sch";
+    
+    static final String HITSP_37_SCHEMATRON_RULES = "schematron/hitspc37_20080211/HITSP_C37.sch";
 
     static final String CDA4CDT_SCHEMATRON_RULES = "schematron/cda4cdt_20090206/HandP.sch";
 
     static final String IHE_BPPC_SCHEMATRON_RULES = "schematron/ihe_bppc_20090518/BPPC.sch";
     
     static final String IHE_LAB_SCHEMATRON_RULES = "schematron/ihe_lab_v21_20080803/IHE_LAB.sch";
+
+    static final String IHE_LAB_20_SCHEMATRON_RULES = "schematron/ihe_lab_v20_20070816/IHE_LAB.sch";
 
     static final String IHE_PCC_ANTEPARTUM_EDUCATION_SCHEMATRON_RULES = "schematron/ihe_pcc_20081223/ape.sch";
 

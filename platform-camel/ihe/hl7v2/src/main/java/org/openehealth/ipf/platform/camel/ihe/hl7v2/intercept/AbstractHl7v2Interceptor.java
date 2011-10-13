@@ -17,7 +17,7 @@ package org.openehealth.ipf.platform.camel.ihe.hl7v2.intercept;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.Hl7v2ConfigurationHolder;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.Hl7v2TransactionConfiguration;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.NakFactory;
@@ -61,8 +61,8 @@ public abstract class AbstractHl7v2Interceptor implements Hl7v2Interceptor {
     }
 
     @Override
-    public Hl7v2TransactionConfiguration getTransactionConfiguration() {
-        return configurationHolder.getTransactionConfiguration();
+    public Hl7v2TransactionConfiguration getHl7v2TransactionConfiguration() {
+        return configurationHolder.getHl7v2TransactionConfiguration();
     }
 
     @Override

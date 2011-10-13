@@ -31,9 +31,9 @@ import org.apache.camel.Producer;
 import org.apache.camel.component.mina.MinaConfiguration;
 import org.apache.camel.component.mina.MinaEndpoint;
 import org.apache.camel.impl.DefaultEndpoint;
-import org.apache.camel.spi.ManagementAware;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 import org.apache.mina.common.DefaultIoFilterChainBuilder;
+import org.apache.mina.common.IoFilter;
 import org.apache.mina.common.IoSession;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.Hl7v2ConfigurationHolder;
 import org.openehealth.ipf.platform.camel.ihe.hl7v2.Hl7v2TransactionConfiguration;
@@ -57,16 +57,16 @@ import org.openehealth.ipf.platform.camel.ihe.mllp.core.intercept.producer.Produ
 import org.openehealth.ipf.platform.camel.ihe.mllp.core.intercept.producer.ProducerMarshalAndInteractiveResponseReceiverInterceptor;
 import org.openehealth.ipf.platform.camel.ihe.mllp.core.intercept.producer.ProducerRequestFragmenterInterceptor;
 import org.openehealth.ipf.platform.camel.ihe.mllp.core.intercept.producer.ProducerStringProcessingInterceptor;
-import org.openehealth.ipf.platform.camel.ihe.mllp.core.mbean.ManagedMllpItiEndpoint;
-
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
 
 /**
  * A wrapper for standard camel-mina endpoint 
  * which provides support for IHE PIX/PDQ-related extensions.
  * @author Dmytro Rud
  */
-public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationHolder,
-    ManagementAware<MllpEndpoint> {
+@ManagedResource("Managed IPF MLLP ITI Endpoint")
+public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationHolder {
 
     private final MllpComponent mllpComponent;
     private final MinaEndpoint wrappedEndpoint;
@@ -75,7 +75,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
 
     private final SSLContext sslContext;
     private final List<MllpCustomInterceptor> customInterceptors;
-    private final boolean mutualTLS;
+    private final MllpClientAuthType clientAuthType;
     private final String[] sslProtocols;
     private final String[] sslCiphers;
     
@@ -101,8 +101,8 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
      *      Whether incomplete ATNA auditing are allowed as well.
      * @param sslContext
      *      the SSL context to use; {@code null} if secure communication is not used.
-     * @param mutualTLS
-     *      {@code true} when client authentication for mutual TLS is required.
+     * @param clientAuthType
+     *      type of desired client authentication (NONE/WANT/MUST).
      * @param customInterceptors
      *      the interceptors defined in the endpoint URI.
      * @param sslProtocols
@@ -135,7 +135,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
             boolean audit, 
             boolean allowIncompleteAudit, 
             SSLContext sslContext,
-            boolean mutualTLS, 
+            MllpClientAuthType clientAuthType,
             List<MllpCustomInterceptor> customInterceptors, 
             String[] sslProtocols, 
             String[] sslCiphers,
@@ -152,13 +152,14 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
         Validate.notNull(mllpComponent);
         Validate.notNull(wrappedEndpoint);
         Validate.noNullElements(customInterceptors);
+        Validate.notNull(clientAuthType);
 
         this.mllpComponent = mllpComponent;
         this.wrappedEndpoint = wrappedEndpoint;
         this.audit = audit;
         this.allowIncompleteAudit = allowIncompleteAudit;
         this.sslContext = sslContext;
-        this.mutualTLS = mutualTLS;
+        this.clientAuthType = clientAuthType;
         this.customInterceptors = customInterceptors;
         this.sslProtocols = sslProtocols;
         this.sslCiphers = sslCiphers;
@@ -189,7 +190,8 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
             DefaultIoFilterChainBuilder filterChain = wrappedEndpoint.getAcceptorConfig().getFilterChain();
             if (!filterChain.contains("ssl")) {
                 HandshakeCallbackSSLFilter filter = new HandshakeCallbackSSLFilter(sslContext);
-                filter.setNeedClientAuth(mutualTLS);
+                filter.setNeedClientAuth(clientAuthType == MllpClientAuthType.MUST);
+                filter.setWantClientAuth(clientAuthType == MllpClientAuthType.WANT);
                 filter.setHandshakeExceptionCallback(new HandshakeFailureCallback());
                 filter.setEnabledProtocols(sslProtocols);
                 filter.setEnabledCipherSuites(sslCiphers);
@@ -269,16 +271,12 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
             }
         }
     }
-    
-    public Object getManagedObject(MllpEndpoint endpoint) {
-        return new ManagedMllpItiEndpoint(endpoint, getConfiguration());
-    }
-    
+
     // ----- getters -----
-    
     /**
      * Returns <tt>true</tt> when ATNA auditing should be performed.
      */
+    @ManagedAttribute(description = "Audit Enabled")
     public boolean isAudit() { 
         return audit;
     }
@@ -286,6 +284,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
     /**
      * Returns <tt>true</tt> when incomplete ATNA auditing records are allowed as well.
      */
+    @ManagedAttribute(description = "Incomplete Audit Allowed")
     public boolean isAllowIncompleteAudit() { 
         return allowIncompleteAudit;
     }
@@ -303,13 +302,13 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
     public MllpAuditStrategy getServerAuditStrategy() {
         return mllpComponent.getServerAuditStrategy();
     }
-    
+
     /**
      * Returns transaction configuration.
      */
     @Override
-    public Hl7v2TransactionConfiguration getTransactionConfiguration() {
-        return mllpComponent.getTransactionConfiguration();
+    public Hl7v2TransactionConfiguration getHl7v2TransactionConfiguration() {
+        return mllpComponent.getHl7v2TransactionConfiguration();
     }
 
     /**
@@ -323,6 +322,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
     /**
      * Returns <code>true</code> if this endpoint supports interactive continuation.
      */
+    @ManagedAttribute(description = "Support Interactive Continuation Enabled")
     public boolean isSupportInteractiveContinuation() {
         return supportInteractiveContinuation;
     }
@@ -330,6 +330,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
     /**
      * Returns <code>true</code> if this endpoint supports unsolicited message fragmentation.
      */
+    @ManagedAttribute(description = "Support Unsolicited Fragmentation Enabled")
     public boolean isSupportUnsolicitedFragmentation() {
         return supportUnsolicitedFragmentation;
     }
@@ -337,6 +338,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
     /**
      * Returns <code>true</code> if this endpoint supports segment fragmentation.
      */
+    @ManagedAttribute(description = "Support Segment Fragmentation Enabled")
     public boolean isSupportSegmentFragmentation() {
         return supportSegmentFragmentation;
     }
@@ -350,6 +352,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
      * and the corresponding request message does not set the records count threshold 
      * explicitly (RCP-2-1==integer, RCP-2-2=='RD').
      */
+    @ManagedAttribute(description = "Interactive Continuation Default Threshold")
     public int getInteractiveContinuationDefaultThreshold() {
         return interactiveContinuationDefaultThreshold;
     }
@@ -358,6 +361,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
      * Returns threshold for unsolicited message fragmentation 
      * (relevant on producer side only).
      */
+    @ManagedAttribute(description = "Unsolicited Fragmentation Threshold")
     public int getUnsolicitedFragmentationThreshold() {
         return unsolicitedFragmentationThreshold;
     }
@@ -365,6 +369,7 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
     /**
      * Returns threshold for segment fragmentation. 
      */
+    @ManagedAttribute(description = "Segment Fragmentation Threshold")
     public int getSegmentFragmentationThreshold() {
         return segmentFragmentationThreshold;
     }
@@ -387,43 +392,116 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
      * Returns true, when the producer should automatically send a cancel
      * message after it has collected all interactive continuation pieces.
      */
+    @ManagedAttribute(description = "Auto Cancel Enabled")
     public boolean isAutoCancel() {
         return autoCancel;
     }
-    
+
     /**
      * @return the sslContext
      */
     public SSLContext getSslContext() {
         return sslContext;
     }
-    
+
+    /**
+     * @return the sslProtocols
+     */
+    @ManagedAttribute(description = "Defined SSL Protocols")
+    public String[] getSslProtocols() {
+        return sslProtocols;
+    }
+
+    /**
+     * @return the sslCiphers
+     */
+    @ManagedAttribute(description = "Defined SSL Ciphers")
+    public String[] getSslCiphers() {
+        return sslCiphers;
+    }
+
+    @ManagedAttribute(description = "Component Type Name")
+    public String getComponentType() {
+        return getComponent().getClass().getName();
+    }
+
+    @ManagedAttribute(description = "Mina Host")
+    public String getHost() {
+        return getConfiguration().getHost();
+    }
+
+    @ManagedAttribute(description = "Mina Port")
+    public int getPort() {
+        return getConfiguration().getPort();
+    }
+
+    @ManagedAttribute(description = "Mina Encoding")
+    public String getEncoding() {
+        return getConfiguration().getEncoding();
+    }
+
+    @ManagedAttribute(description = "Mina Timeout")
+    public long getTimeout() {
+        return getConfiguration().getTimeout();
+    }
+
+    @ManagedAttribute(description = "Mina Filters")
+    public String[] getIoFilters() {
+        List<IoFilter> filters = getConfiguration().getFilters();
+        return toStringArray(filters);
+    }
+
+    @ManagedAttribute(description = "Interactive Continuation Storage Cache Type")
+    public String getInteractiveContinuationStorageType() {
+        return isSupportInteractiveContinuation() ?
+            getInteractiveContinuationStorage().getClass().getName() : "";
+    }
+
+    @ManagedAttribute(description = "Unsolicited Fragmentation Storage Cache Type")
+    public String getUnsolicitedFragmentationStorageType() {
+        return isSupportUnsolicitedFragmentation() ?
+            getUnsolicitedFragmentationStorage().getClass().getName() : "";
+    }
+
+    @ManagedAttribute(description = "SSL Secure Enabled")
+    public boolean isSslSecure() {
+        return getSslContext() != null;
+    }
+
+    /**
+     * @return the client authentication type.
+     */
+    public MllpClientAuthType getClientAuthType() {
+        return clientAuthType;
+    }
+
+    @ManagedAttribute(description = "Client Authentication Type")
+    public String getClientAuthTypeClass() {
+        return getClientAuthType().toString();
+    }
+
     /**
      * @return the customInterceptors
      */
     public List<MllpCustomInterceptor> getCustomInterceptors() {
         return customInterceptors;
     }
-    
+
     /**
-     * @return the mutualTLS
+     * @return the customInterceptors as array of string names
      */
-    public boolean isMutualTLS() {
-        return mutualTLS;
+    @ManagedAttribute(description = "Custom Interceptors")
+    public String[] getCustomInterceptorsList() {
+        List<MllpCustomInterceptor> interceptors = getCustomInterceptors();
+        return toStringArray(interceptors);
     }
-    
-    /**
-     * @return the sslProtocols
-     */
-    public String[] getSslProtocols() {
-        return sslProtocols;
-    }
-    
-    /**
-     * @return the sslCiphers
-     */
-    public String[] getSslCiphers() {
-        return sslCiphers;
+
+    private String[] toStringArray(List<?> list) {
+        final String[] result = new String[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            result[i] = list.get(i).getClass().getCanonicalName();
+        }
+        return result;
     }
 
     /**
@@ -434,10 +512,8 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
         return wrappedEndpoint;
     }
 
-
-    // ----- dumb delegation, nothing interesting below -----
-
-    @SuppressWarnings("unchecked")
+    /* ----- dumb delegation, nothing interesting below ----- */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
     public void configureProperties(Map options) {
         wrappedEndpoint.configureProperties(options);
@@ -541,6 +617,5 @@ public class MllpEndpoint extends DefaultEndpoint implements Hl7v2ConfigurationH
     public String toString() {
         return wrappedEndpoint.toString();
     }
-
 
 }

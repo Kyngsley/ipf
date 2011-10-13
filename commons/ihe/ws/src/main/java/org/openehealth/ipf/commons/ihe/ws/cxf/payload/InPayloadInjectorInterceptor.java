@@ -17,10 +17,12 @@ package org.openehealth.ipf.commons.ihe.ws.cxf.payload;
 
 import java.util.List;
 
-import org.apache.cxf.interceptor.ServiceInvokerInterceptor;
 import org.apache.cxf.message.Message;
 import org.apache.cxf.phase.AbstractPhaseInterceptor;
+import static org.openehealth.ipf.commons.ihe.ws.cxf.payload.StringPayloadHolder.PayloadType.SOAP_BODY;
+
 import org.apache.cxf.phase.Phase;
+import org.openehealth.ipf.commons.ihe.ws.cxf.audit.AuditInRequestInterceptor;
 
 /**
  * CXF interceptor which inserts data of String content type  
@@ -39,8 +41,9 @@ public class InPayloadInjectorInterceptor extends AbstractPhaseInterceptor<Messa
      *      message payload should be inserted.
      */
     public InPayloadInjectorInterceptor(int position) {
-        super(Phase.INVOKE);
-        addBefore(ServiceInvokerInterceptor.class.getName());
+        super(Phase.UNMARSHAL);
+        addBefore(AuditInRequestInterceptor.class.getName());
+        addAfter(InNamespaceMergeInterceptor.class.getName());
         this.position = position;
     }
 
@@ -48,9 +51,9 @@ public class InPayloadInjectorInterceptor extends AbstractPhaseInterceptor<Messa
     @Override
     public void handleMessage(Message message) {
         List list = message.getContent(List.class);
-        if (list != null) {
-            String payload = message.getContent(String.class);
-            list.set(position, payload);
+        StringPayloadHolder payloadHolder = message.getContent(StringPayloadHolder.class);
+        if ((list != null) && (payloadHolder != null)) {
+            list.set(position, payloadHolder.get(SOAP_BODY));
         }
     }
 }
