@@ -31,12 +31,12 @@ import org.apache.cxf.jaxws.context.WebServiceContextImpl;
 import org.openehealth.ipf.platform.camel.core.util.Exchanges;
 
 /**
- * Base class for web services that are aware of a {@link DefaultItiConsumer}.
+ * Base class for web services that are aware of a {@link DefaultWsConsumer}.
  *
  * @author Jens Riemschneider
  */
-public class DefaultItiWebService {
-    private DefaultItiConsumer consumer;
+abstract public class AbstractWebService {
+    private DefaultWsConsumer consumer;
 
     /**
      * Calls the consumer for processing via Camel.
@@ -102,7 +102,7 @@ public class DefaultItiWebService {
      * @param consumer
      *          the consumer to be used
      */
-    public void setConsumer(DefaultItiConsumer consumer) {
+    public void setConsumer(DefaultWsConsumer consumer) {
         Validate.notNull(consumer, "consumer");
         this.consumer = consumer;
     }
@@ -110,7 +110,7 @@ public class DefaultItiWebService {
     /**
      * Returns the configured ITI consumer instance.
      */
-    protected DefaultItiConsumer getConsumer() {
+    protected DefaultWsConsumer getConsumer() {
         return consumer;
     }
 

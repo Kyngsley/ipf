@@ -28,7 +28,7 @@ import static org.apache.commons.lang3.Validate.notNull;
  * @author Jens Riemschneider
  * @author Dmytro Rud
  */
-public class DefaultItiConsumer extends DefaultConsumer {
+public class DefaultWsConsumer extends DefaultConsumer {
     private final Server server;
 
     /**
@@ -39,12 +39,12 @@ public class DefaultItiConsumer extends DefaultConsumer {
      *          the processor to start processing incoming exchanges.
      * @param service
      *          the service to consume messages from.
-     * @deprecated It is strongly recommended to use {@link #DefaultItiConsumer(DefaultItiEndpoint, Processor, DefaultItiWebService, Server)}
+     * @deprecated It is strongly recommended to use {@link #DefaultWsConsumer(AbstractWsEndpoint, Processor, AbstractWebService, Server)}
      *          instead of this constructor because this version does not allow
      *          stopping/restarting of the service.
      */
     @Deprecated
-    public DefaultItiConsumer(DefaultItiEndpoint endpoint, Processor processor, DefaultItiWebService service) {
+    public DefaultWsConsumer(AbstractWsEndpoint endpoint, Processor processor, AbstractWebService service) {
         super(endpoint, processor);
         notNull(service, "service cannot be null");
         service.setConsumer(this);
@@ -62,7 +62,7 @@ public class DefaultItiConsumer extends DefaultConsumer {
      * @param server
      *          the CXF server instance driving the service.
      */
-    public DefaultItiConsumer(DefaultItiEndpoint endpoint, Processor processor, DefaultItiWebService service, Server server) {
+    public DefaultWsConsumer(AbstractWsEndpoint endpoint, Processor processor, AbstractWebService service, Server server) {
         super(endpoint, processor);
         notNull(service, "service cannot be null");
         notNull(server, "server cannot be null");

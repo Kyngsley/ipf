@@ -23,23 +23,24 @@ import org.openehealth.ipf.commons.ihe.hl7v3.iti56.asyncresponse.Iti56AsyncRespo
 import org.openehealth.ipf.commons.ihe.ws.JaxWsClientFactory;
 import org.openehealth.ipf.commons.ihe.ws.cxf.audit.WsAuditStrategy;
 import org.openehealth.ipf.platform.camel.ihe.hl7v3.Hl7v3AsyncResponseEndpoint;
+import org.openehealth.ipf.platform.camel.ihe.ws.AbstractWsEndpoint;
 import org.openehealth.ipf.platform.camel.ihe.ws.AbstractWsComponent;
-import org.openehealth.ipf.platform.camel.ihe.ws.DefaultItiEndpoint;
-import org.openehealth.ipf.platform.camel.ihe.ws.DefaultItiProducer;
+import org.openehealth.ipf.platform.camel.ihe.ws.AbstractWsProducer;
 
 import javax.xml.namespace.QName;
 import java.util.Map;
 
 /**
- * The Camel component for the ITI-56 (XCPD) async response.
+ * Camel component for the ITI-56 XCPD Initiating Gateway actor
+ * (receiver of asynchronous responses).
  */
 public class Iti56AsyncResponseComponent extends AbstractWsComponent<Hl7v3WsTransactionConfiguration> {
     private final static String NS_URI = "urn:ihe:iti:xcpd:2009";
     private final static Hl7v3WsTransactionConfiguration WS_CONFIG = new Hl7v3WsTransactionConfiguration(
             IpfInteractionId.ITI_56,
-            new QName(NS_URI, "RespondingGateway_Response_Service", "xcpd"),
+            new QName(NS_URI, "InitiatingGateway_Service", "xcpd"),
             Iti56AsyncResponsePortType.class,
-            new QName(NS_URI, "RespondingGateway_Response_Binding_Soap12", "xcpd"),
+            new QName(NS_URI, "InitiatingGateway_Binding", "xcpd"),
             false,
             "wsdl/iti56/iti56-asyncresponse-raw.wsdl",
             null,
@@ -70,13 +71,13 @@ public class Iti56AsyncResponseComponent extends AbstractWsComponent<Hl7v3WsTran
     }
 
     @Override
-    public Iti56AsyncResponseService getServiceInstance(DefaultItiEndpoint<?> endpoint) {
+    public Iti56AsyncResponseService getServiceInstance(AbstractWsEndpoint<?> endpoint) {
         return new Iti56AsyncResponseService();
     }
 
     @Override
-    public DefaultItiProducer getProducer(
-            DefaultItiEndpoint<?> endpoint,
+    public AbstractWsProducer getProducer(
+            AbstractWsEndpoint<?> endpoint,
             JaxWsClientFactory clientFactory)
     {
         throw new IllegalStateException("No producer support for asynchronous response endpoints");

@@ -24,10 +24,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.cxf.endpoint.ClientImpl;
 import org.apache.cxf.frontend.ClientProxy;
 import org.apache.cxf.headers.Header;
-import org.apache.cxf.ws.addressing.AddressingPropertiesImpl;
-import org.apache.cxf.ws.addressing.AttributedURIType;
-import org.apache.cxf.ws.addressing.EndpointReferenceType;
-import org.apache.cxf.ws.addressing.JAXWSAConstants;
+import org.apache.cxf.jaxws.context.WrappedMessageContext;
+import org.apache.cxf.ws.addressing.*;
 import org.openehealth.ipf.commons.ihe.ws.JaxWsClientFactory;
 import org.openehealth.ipf.commons.ihe.ws.WsTransactionConfiguration;
 import org.openehealth.ipf.commons.ihe.ws.correlation.AsynchronyCorrelator;
@@ -35,7 +33,6 @@ import org.openehealth.ipf.platform.camel.core.util.Exchanges;
 
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.apache.commons.lang3.Validate.notNull;
@@ -48,8 +45,8 @@ import static org.openehealth.ipf.platform.camel.ihe.ws.HeaderUtils.processUserD
  * @author Jens Riemschneider
  * @author Dmytro Rud
  */
-public abstract class DefaultItiProducer extends DefaultProducer {
-    private static final Log log = LogFactory.getLog(DefaultItiProducer.class);
+public abstract class AbstractWsProducer extends DefaultProducer {
+    private static final Log LOG = LogFactory.getLog(AbstractWsProducer.class);
 
     private final JaxWsClientFactory clientFactory;
     private final Class<?> requestClass;
@@ -64,8 +61,8 @@ public abstract class DefaultItiProducer extends DefaultProducer {
      *          the factory for clients to produce messages for the service.
      */
     @SuppressWarnings("unchecked")
-    public DefaultItiProducer(
-            DefaultItiEndpoint endpoint, 
+    public AbstractWsProducer(
+            AbstractWsEndpoint endpoint,
             JaxWsClientFactory clientFactory,
             Class<?> requestClass)
     {
@@ -79,17 +76,17 @@ public abstract class DefaultItiProducer extends DefaultProducer {
     
     @Override
     public void process(Exchange exchange) throws Exception {
-        log.debug("Calling web service on '" + getWsTransactionConfiguration().getServiceName() + "' with " + exchange);
+        LOG.debug("Calling web service on '" + getWsTransactionConfiguration().getServiceName() + "' with " + exchange);
         
         // prepare
         Object body = exchange.getIn().getMandatoryBody(requestClass);
         Object client = getClient();
         configureClient(client);
         BindingProvider bindingProvider = (BindingProvider) client;
-        Map<String, Object> requestContext = bindingProvider.getRequestContext();
+        WrappedMessageContext requestContext = (WrappedMessageContext) bindingProvider.getRequestContext();
         cleanRequestContext(requestContext);
 
-        enrichRequestExchange(exchange, requestContext);
+        enrichRequestContext(exchange, requestContext);
         processUserDefinedOutgoingHeaders(requestContext, exchange.getIn(), true);
 
         // set request encoding based on Camel exchange property
@@ -101,26 +98,33 @@ public abstract class DefaultItiProducer extends DefaultProducer {
         // get and analyse WS-Addressing asynchrony configuration
         String replyToUri =
                 getWsTransactionConfiguration().isAllowAsynchrony()
-                    ? exchange.getIn().getHeader(DefaultItiEndpoint.WSA_REPLYTO_HEADER_NAME, String.class)
+                    ? exchange.getIn().getHeader(AbstractWsEndpoint.WSA_REPLYTO_HEADER_NAME, String.class)
                     : null; 
         if ((replyToUri != null) && replyToUri.trim().isEmpty()) {
             replyToUri = null;
         }
 
         // for asynchronous interaction: configure WSA headers and store correlation data
-        if (replyToUri != null) {
+        if ((replyToUri != null) ||
+            Boolean.TRUE.equals(requestContext.get(AsynchronyCorrelator.FORCE_CORRELATION)))
+        {
             String messageId = "urn:uuid:" + UUID.randomUUID().toString();
             configureWSAHeaders(messageId, replyToUri, requestContext);
 
-            DefaultItiEndpoint endpoint = (DefaultItiEndpoint) getEndpoint();
+            AbstractWsEndpoint endpoint = (AbstractWsEndpoint) getEndpoint();
             AsynchronyCorrelator correlator = endpoint.getCorrelator();
             correlator.storeServiceEndpointUri(messageId, endpoint.getEndpointUri());
             
             String correlationKey = exchange.getIn().getHeader(
-                    DefaultItiEndpoint.CORRELATION_KEY_HEADER_NAME, 
+                    AbstractWsEndpoint.CORRELATION_KEY_HEADER_NAME,
                     String.class);
             if (correlationKey != null) {
                 correlator.storeCorrelationKey(messageId, correlationKey);
+            }
+
+            String[] alternativeKeys = getAlternativeRequestKeys(exchange);
+            if (alternativeKeys != null) {
+                correlator.storeAlternativeKeys(messageId, alternativeKeys);
             }
         }
         
@@ -144,7 +148,7 @@ public abstract class DefaultItiProducer extends DefaultProducer {
         if (replyToUri == null) {
             Message responseMessage = Exchanges.resultMessage(exchange);
             responseMessage.getHeaders().putAll(exchange.getIn().getHeaders());
-            Map<String, Object> responseContext = bindingProvider.getResponseContext();
+            WrappedMessageContext responseContext = (WrappedMessageContext) bindingProvider.getResponseContext();
             processIncomingHeaders(responseContext, responseMessage);
             enrichResponseMessage(responseMessage, responseContext);
 
@@ -164,17 +168,36 @@ public abstract class DefaultItiProducer extends DefaultProducer {
 
     
     /**
-     * Enriches the given request exchange from the request context data.
+     * Enriches the given Web Service request context
+     * on the basis of the given Camel exchange, and vice versa.
      */
-    protected void enrichRequestExchange(Exchange exchange, Map<String, Object> requestContext) {
+    protected void enrichRequestContext(Exchange exchange, WrappedMessageContext requestContext) {
         // does nothing per default
     }
 
-    
+
     /**
-     * Enriches the given response message from the request context data.
+     * Determines the set of correlation keys for the request message contained
+     * in the given exchange, which are alternative to the WS-Addressing message ID.
+     * An example of alternative key is the query ID in HL7v3-based transactions.
+     * <p>
+     * Per default, this method returns <code>null</code>.
+     *
+     * @param exchange
+     *      Camel exchange containing a request message.
+     * @return
+     *      A non-empty collection of non-<code>null</code> alternative keys,
+     *      or <code>null</code>, when no keys could have been extracted.
      */
-    protected void enrichResponseMessage(Message message, Map<String, Object> responseContext) {
+    protected String[] getAlternativeRequestKeys(Exchange exchange) {
+        return null;
+    }
+
+
+    /**
+     * Enriches the given response message from the Web Service request context data.
+     */
+    protected void enrichResponseMessage(Message message, WrappedMessageContext responseContext) {
         // does nothing per default
     }
 
@@ -192,7 +215,7 @@ public abstract class DefaultItiProducer extends DefaultProducer {
     /**
      * Request context is shared among subsequent requests, so we have to clean it.
      */
-    protected void cleanRequestContext(Map<String, Object> requestContext) {
+    protected void cleanRequestContext(WrappedMessageContext requestContext) {
         requestContext.remove(JAXWSAConstants.CLIENT_ADDRESSING_PROPERTIES);
         requestContext.remove(org.apache.cxf.message.Message.PROTOCOL_HEADERS);
         requestContext.remove(Header.HEADER_LIST);
@@ -203,23 +226,28 @@ public abstract class DefaultItiProducer extends DefaultProducer {
      * Initializes WS-Addressing headers MessageID and ReplyTo, 
      * and stores them into the given message context.
      */
-    private static void configureWSAHeaders(String messageId, String replyToUri, Map<String, Object> context) {
-        // header container
-        AddressingPropertiesImpl maps = new AddressingPropertiesImpl();
-        context.put(JAXWSAConstants.CLIENT_ADDRESSING_PROPERTIES, maps);
+    private static void configureWSAHeaders(String messageId, String replyToUri, WrappedMessageContext context) {
+        // obtain headers' container
+        AddressingProperties apropos = (AddressingProperties) context.get(JAXWSAConstants.CLIENT_ADDRESSING_PROPERTIES);
+        if (apropos == null) {
+            apropos = new AddressingPropertiesImpl();
+            context.put(JAXWSAConstants.CLIENT_ADDRESSING_PROPERTIES, apropos);
+        }
 
         // MessageID header
         AttributedURIType uri = new AttributedURIType();
         uri.setValue(messageId);
-        maps.setMessageID(uri);
-        log.debug("Set WS-Addressing message ID: " + messageId);
+        apropos.setMessageID(uri);
+        LOG.debug("Set WS-Addressing message ID: " + messageId);
 
         // ReplyTo header
-        AttributedURIType uri2 = new AttributedURIType();
-        uri2.setValue(replyToUri);
-        EndpointReferenceType endpointReference = new EndpointReferenceType();
-        endpointReference.setAddress(uri2);
-        maps.setReplyTo(endpointReference);
+        if (replyToUri != null) {
+            AttributedURIType uri2 = new AttributedURIType();
+            uri2.setValue(replyToUri);
+            EndpointReferenceType endpointReference = new EndpointReferenceType();
+            endpointReference.setAddress(uri2);
+            apropos.setReplyTo(endpointReference);
+        }
     }
     
     

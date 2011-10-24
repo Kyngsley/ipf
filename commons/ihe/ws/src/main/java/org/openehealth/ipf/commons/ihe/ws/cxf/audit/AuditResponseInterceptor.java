@@ -54,6 +54,7 @@ public class AuditResponseInterceptor extends AbstractAuditInterceptor {
      * @param serverSide
      *      whether this interceptor is being used on the server side 
      *      (<code>true</code>) or on the client side (<code>false</code>).
+     *      Server side is where the response is generated.
      * @param correlator
      *      correlator for asynchronous messages (<code>null</code> on server side).
      * @param asyncReceiver
@@ -91,8 +92,13 @@ public class AuditResponseInterceptor extends AbstractAuditInterceptor {
     protected void process(SoapMessage message) throws Exception {
         // partial responses are for us out of interest
         if (MessageUtils.isPartialResponse(message)) {
-            // workaround for https://issues.apache.org/jira/browse/CXF-3768
-            message.put(SoapMessage.RESPONSE_CODE, 202);
+            return;
+        }
+
+        // check whether the response is relevant for ATNA audit finalization
+        Object response = extractPojo(message);
+        WsAuditStrategy auditStrategy = getAuditStrategy();
+        if (! auditStrategy.isAuditableResponse(response)) {
             return;
         }
 
@@ -133,9 +139,6 @@ public class AuditResponseInterceptor extends AbstractAuditInterceptor {
         // check whether the response POJO is available and
         // perform transaction-specific enrichment of the audit dataset
         Exchange exchange = message.getExchange();
-        Object response = extractPojo(message);
-        WsAuditStrategy auditStrategy = getAuditStrategy();
-
         if ((message == exchange.getInFaultMessage())
                 || (message == exchange.getOutFaultMessage())
                 || (response == null))

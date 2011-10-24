@@ -37,8 +37,8 @@ import org.springframework.jmx.export.annotation.ManagedResource;
  * @author Jens Riemschneider
  * @author Dmytro Rud
  */
-@ManagedResource(description = "Managed IPF WS ITI Endpoint")
-public abstract class DefaultItiEndpoint<ComponentType extends AbstractWsComponent<?>>
+@ManagedResource(description = "Managed IPF eHealth Web Service Endpoint")
+public abstract class AbstractWsEndpoint<ComponentType extends AbstractWsComponent<?>>
     extends DefaultEndpoint {
 
     private static final String ENDPOINT_PROTOCOL = "http://";
@@ -48,38 +48,44 @@ public abstract class DefaultItiEndpoint<ComponentType extends AbstractWsCompone
      * Name of incoming Camel header where the user should store the URL
      * of asynchronous response endpoint (WS-Addressing header "ReplyTo").  
      */
-    public static final String WSA_REPLYTO_HEADER_NAME = "ipf.wsa.ReplyTo";
+    public static final String WSA_REPLYTO_HEADER_NAME =
+            AbstractWsEndpoint.class.getName() + ".REPLY_TO";
     
     /**
      * Name of Camel message header where the user should store 
      * the optional correlation key.  
      */
-    public static final String CORRELATION_KEY_HEADER_NAME = "ipf.correlation.key";
+    public static final String CORRELATION_KEY_HEADER_NAME =
+            AbstractWsEndpoint.class.getName() + ".CORRELATION_KEY";
     
     /**
      * Name of Camel message header where incoming HTTP headers
-     * will be stored as a <code>Map&lt;String, String&gt</code>.
+     * will be stored as a <code>Map&lt;String, String&gt;</code>.
      */
-    public static final String INCOMING_HTTP_HEADERS = "ipf.ihe.http.headers.incoming";
+    public static final String INCOMING_HTTP_HEADERS =
+            AbstractWsEndpoint.class.getName() + ".INCOMING_HTTP_HEADERS";
 
     /**
      * Name of Camel message header from where additional user-defined HTTP 
-     * headers will be taken as a <code>Map&lt;String, String&gt</code>.
+     * headers will be taken as a <code>Map&lt;String, String&gt;</code>.
      */
-    public static final String OUTGOING_HTTP_HEADERS = "ipf.ihe.http.headers.outgoing";
-    
+    public static final String OUTGOING_HTTP_HEADERS =
+            AbstractWsEndpoint.class.getName() + ".OUTGOING_HTTP_HEADERS";
+
     /**
      * Name of Camel message header where incoming SOAP headers
-     * will be stored as a <code>Map&lt;{@link QName}, {@link Header}&gt</code>.
+     * will be stored as a <code>Map&lt;{@link QName}, {@link Header}&gt;</code>.
      */
-    public static final String INCOMING_SOAP_HEADERS = "ipf.ihe.soap.headers.incoming";
+    public static final String INCOMING_SOAP_HEADERS =
+            AbstractWsEndpoint.class.getName() + ".INCOMING_SOAP_HEADERS";
 
     /**
      * Name of Camel message header from where additional user-defined HTTP 
-     * headers will be taken as a <code>List&lt;{@link Header}&gt</code>.
+     * headers will be taken as a <code>List&lt;{@link Header}&gt;</code>.
      */
-    public static final String OUTGOING_SOAP_HEADERS = "ipf.ihe.soap.headers.outgoing";
-    
+    public static final String OUTGOING_SOAP_HEADERS =
+            AbstractWsEndpoint.class.getName() + ".OUTGOING_SOAP_HEADERS";
+
     private final String address;
 
     private String serviceAddress;
@@ -103,9 +109,9 @@ public abstract class DefaultItiEndpoint<ComponentType extends AbstractWsCompone
      * @param customInterceptors
      *          user-defined set of additional CXF interceptors.
      */
-    protected DefaultItiEndpoint(
-            String endpointUri, 
-            String address, 
+    protected AbstractWsEndpoint(
+            String endpointUri,
+            String address,
             ComponentType component,
             InterceptorProvider customInterceptors) 
     {
@@ -281,11 +287,11 @@ public abstract class DefaultItiEndpoint<ComponentType extends AbstractWsCompone
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception {
-        DefaultItiWebService serviceInstance = getComponent().getServiceInstance(this);
+        AbstractWebService serviceInstance = getComponent().getServiceInstance(this);
         ServerFactoryBean serverFactory = getJaxWsServiceFactory().createServerFactory(serviceInstance);
         Server server = serverFactory.create();
-        DefaultItiWebService service = (DefaultItiWebService) serverFactory.getServiceBean();
-        return new DefaultItiConsumer(this, processor, service, server);
+        AbstractWebService service = (AbstractWebService) serverFactory.getServiceBean();
+        return new DefaultWsConsumer(this, processor, service, server);
     }
 
 
